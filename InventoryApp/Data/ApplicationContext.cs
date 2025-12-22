@@ -16,15 +16,34 @@ namespace InventoryApp.Data
             modelBuilder.Entity<InventoryItem>()
                 .HasKey(ii => new { ii.PlayerId, ii.ItemId });
 
-            modelBuilder.Entity<Player>()
-                .HasMany(p => p.Inventory)
+            modelBuilder.Entity<Player>(entity =>
+            {
+                entity.Property(p => p.Name)
+                .IsRequired()
+                .HasMaxLength(100);
+
+                entity.HasIndex(p => p.Name)
+                .IsUnique();
+
+                entity.HasMany(p => p.Inventory)
                 .WithOne(ii => ii.Player)
                 .HasForeignKey(ii => ii.PlayerId);
+            });
 
-            modelBuilder.Entity<Item>()
-                .HasMany(i => i.InventoryItems)
+
+            modelBuilder.Entity<Item>(entity =>
+            {
+                entity.Property(i => i.Name)
+                .IsRequired()
+                .HasMaxLength(100);
+
+                entity.HasIndex(i => i.Name)
+                .IsUnique();
+
+                entity.HasMany(i => i.InventoryItems)
                 .WithOne(ii => ii.Item)
                 .HasForeignKey(ii => ii.ItemId);
+            });
         }
     }
 }
