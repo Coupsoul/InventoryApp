@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using InventoryApp.Enums;
+﻿using InventoryApp.Enums;
 
 namespace InventoryApp.Entities
 {
@@ -19,6 +18,11 @@ namespace InventoryApp.Entities
             PriceCurrency = currency;
             Price = price;
             Description = description;
+        }
+
+        public int GetSellPrice()
+        {
+            return Price / 2;
         }
     }
 }
