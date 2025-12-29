@@ -18,7 +18,7 @@ namespace InventoryApp.Services
         {
             return await _context.Players
                 .Include(p => p.Inventory)
-                .ThenInclude(i => i.Item)
+                .ThenInclude(ii => ii.Item)
                 .FirstOrDefaultAsync(p => p.Name == name);
         }
 
@@ -79,6 +79,62 @@ namespace InventoryApp.Services
                     return $"Ошибка: {ex.Message}";
                 }
             }
+        }
+
+        public async Task<string> SellItemAsync(string playerName, string itemName)
+        {
+            using (var transaction = await _context.Database.BeginTransactionAsync())
+            {
+                try
+                {
+                    var player = await GetPlayerAsync(playerName);
+                    if (player == null) return "Игрок не найден";
+                    var inventoryItem = player.Inventory.FirstOrDefault(ii => ii.Item.Name == itemName);
+                    if (inventoryItem == null) return "В инвентаре нет такого предмета";
+
+                    var itemData = inventoryItem.Item;
+                    int sellPrice = itemData.GetSellPrice();
+
+                    if (itemData.PriceCurrency == Currency.Gold)
+                    {
+                        player.Gold += sellPrice;
+                    }
+                    else
+                    {
+                        player.Gems += sellPrice;
+                    }
+
+                    inventoryItem.Amount--;
+
+                    if (inventoryItem.Amount < 1)
+                    {
+                        _context.InventoryItems.Remove(inventoryItem);
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    var currencyName = itemData.PriceCurrency == Currency.Gold ? "золота" : "брюлликов";
+                    return $"Продано: {itemName} за {sellPrice} {currencyName}";
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    return $"Ошибка при продаже: {ex.Message}";
+                }
+            }
+        }
+
+        public async Task<string> AddRewardAsync(string playerName, int goldAmount, int gemsAmount)
+        {
+            var player = await _context.Players.FirstOrDefaultAsync(p => p.Name == playerName);
+            if (player == null) return "Игрок не найден.";
+
+            player.Gold += goldAmount;
+            player.Gems += gemsAmount;
+
+            await _context.SaveChangesAsync();
+            return $"Залутано {goldAmount} золота и {gemsAmount} брюлликов.";
         }
     }
 }
