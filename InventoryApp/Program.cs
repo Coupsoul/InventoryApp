@@ -3,6 +3,8 @@ using InventoryApp.Enums;
 using InventoryApp.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 class Program
 {
@@ -10,60 +12,64 @@ class Program
 
     static async Task Main(string[] args)
     {
-        var builder = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-
-        IConfiguration configuration = builder.Build();
-
-        using var httpClient = new HttpClient();
-        var contextFactory = new SampleContextFactory();
-
-        using (var context = contextFactory.CreateDbContext(args))
-        {
-            Console.WriteLine("Проверка данных...");
-            context.Database.Migrate();
-            DbSeeder.Seed(context);
-            Console.Clear();
-
-            var invService = new InventoryService(context);
-            var curService = new CurrencyService(httpClient, configuration);
-            var playerName = "Player_01";
-
-            bool exit = false;
-            while (!exit)
+        var host = Host.CreateDefaultBuilder(args)
+            .ConfigureServices((context, services) =>
             {
-                Console.WriteLine($"Добро пожаловать, {playerName}!");
+                string connection = context.Configuration.GetConnectionString("DefaultConnection")!;
 
-                Console.WriteLine("\nВыберите действие");
-                Console.WriteLine("1. Мой инвентарь");
-                Console.WriteLine("2. Магазин");
-                Console.WriteLine("3. Ломбард");
-                Console.WriteLine("4. Гринд");
-                Console.WriteLine("5. Обмен валют");
-                Console.WriteLine("0. Выход");
-                Console.Write("> ");
+                services.AddDbContext<ApplicationContext>(options => options.UseSqlServer(connection));
+                services.AddHttpClient<CurrencyService>();
+                services.AddTransient<InventoryService>();
+            })
+            .Build();
 
-                string? input = Console.ReadLine();
-                Console.WriteLine();
+        using var scope = host.Services.CreateScope();
+        var services = scope.ServiceProvider;
 
-                switch (input)
-                {
-                    case "1":
-                        await ShowInventory(invService, playerName); break;
-                    case "2":
-                        await Shopping(invService, playerName); break;
-                    case "3":
-                        await OpenLombard(invService, playerName); break;
-                    case "4":
-                        await Grind(invService, playerName); break;
-                    case "5":
-                        await OpenCurrencyExchanger(curService, invService, playerName); break;
-                    case "0":
-                        exit = true; break;
-                    default:
-                        Console.WriteLine("Неизвестная команда."); WaitAndClear(); break;
-                }
+        var context = services.GetRequiredService<ApplicationContext>();
+        var invService = services.GetRequiredService<InventoryService>();
+        var curService = services.GetRequiredService<CurrencyService>();
+
+        Console.WriteLine("Проверка данных...");
+        context.Database.Migrate();
+        DbSeeder.Seed(context);
+        Console.Clear();
+
+        var playerName = "Player_01";
+
+        bool exit = false;
+        while (!exit)
+        {
+            Console.WriteLine($"Добро пожаловать, {playerName}!");
+
+            Console.WriteLine("\nВыберите действие");
+            Console.WriteLine("1. Мой инвентарь");
+            Console.WriteLine("2. Магазин");
+            Console.WriteLine("3. Ломбард");
+            Console.WriteLine("4. Гринд");
+            Console.WriteLine("5. Обмен валют");
+            Console.WriteLine("0. Выход");
+            Console.Write("> ");
+
+            string? input = Console.ReadLine();
+            Console.WriteLine();
+
+            switch (input)
+            {
+                case "1":
+                    await ShowInventory(invService, playerName); break;
+                case "2":
+                    await Shopping(invService, playerName); break;
+                case "3":
+                    await OpenLombard(invService, playerName); break;
+                case "4":
+                    await Grind(invService, playerName); break;
+                case "5":
+                    await OpenCurrencyExchanger(curService, invService, playerName); break;
+                case "0":
+                    exit = true; break;
+                default:
+                    Console.WriteLine("Неизвестная команда."); WaitAndClear(); break;
             }
         }
     }
@@ -298,7 +304,7 @@ class Program
         }
 
         int totalGold = rate * amount;
-        Console.WriteLine(isBuying 
+        Console.WriteLine(isBuying
             ? $"Это будет стоить {totalGold} Злт."
             : $"Вы получите {totalGold} Злт.");
         Console.WriteLine("Нажмите [Enter] для подтверждения или [Esc] для отмены.\n");
