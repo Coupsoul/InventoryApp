@@ -36,19 +36,19 @@ namespace InventoryApp.Services
                     var player = await _context.Players.FirstOrDefaultAsync(p => p.Name == playerName);
                     var item = await _context.Items.FirstOrDefaultAsync(i => i.Name == itemName);
 
-                    if (player == null) return $"Игрок \"{playerName}\" не найден";
-                    if (item == null) return $"Предмет \"{itemName}\" не найден";
+                    if (player == null) return $"Игрок \"{playerName}\" не найден.";
+                    if (item == null) return $"Предмет \"{itemName}\" не найден.";
 
                     if (item.PriceCurrency == Currency.Gold)
                     {
                         if (player.Gold < item.Price)
-                            return "Золотишка не хватило.";
+                            return "С такими крохами кассу не открывают. Выбирай что-нибудь подешевле.";
                         player.Gold -= item.Price;
                     }
                     else
                     {
                         if (player.Gems < item.Price)
-                            return "Маловато у тебя брюлликов.";
+                            return "Фантазия богатая, а кошелек — не очень. Выбери что-нибудь, что будет тебе по карману.";
                         player.Gems -= item.Price;
                     }
 
@@ -88,9 +88,9 @@ namespace InventoryApp.Services
                 try
                 {
                     var player = await GetPlayerAsync(playerName);
-                    if (player == null) return "Игрок не найден";
+                    if (player == null) return "Игрок не найден.";
                     var inventoryItem = player.Inventory.FirstOrDefault(ii => ii.Item.Name == itemName);
-                    if (inventoryItem == null) return "В инвентаре нет такого предмета";
+                    if (inventoryItem == null) return "В инвентаре нет такого предмета.";
 
                     var itemData = inventoryItem.Item;
                     int sellPrice = itemData.GetSellPrice();
@@ -115,7 +115,7 @@ namespace InventoryApp.Services
                     await transaction.CommitAsync();
 
                     var currencyName = itemData.PriceCurrency == Currency.Gold ? "золота" : "брюлликов";
-                    return $"Продано: {itemName} за {sellPrice} {currencyName}";
+                    return $"Продано: {itemName} за {sellPrice} {currencyName}.";
                 }
                 catch (Exception ex)
                 {
@@ -135,6 +135,26 @@ namespace InventoryApp.Services
 
             await _context.SaveChangesAsync();
             return $"Залутано {goldAmount} золота и {gemsAmount} брюлликов.";
+        }
+
+        public async Task<string> ExchangeGemsAsync(string playerName, int gemsChange, int goldRate)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            var player = await GetPlayerAsync(playerName);
+            if (player == null) return "Игрок не найден.";
+
+            int goldDiff = gemsChange * goldRate;
+
+            if (gemsChange > 0 && player.Gold < goldDiff) return "Цифры не сходятся. Для такой суммы нужно больше веса в кошельке.";
+            if (gemsChange < 0 && player.Gems < Math.Abs(gemsChange)) return "Цифры не сходятся. Для такой суммы нужно больше веса в кошельке.";
+
+            player.Gems += gemsChange;
+            player.Gold -= goldDiff;
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return "Обмен прошёл успешно.";
         }
     }
 }

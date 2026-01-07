@@ -2,21 +2,32 @@
 using InventoryApp.Enums;
 using InventoryApp.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 class Program
 {
+    private static readonly Random _rnd = new Random();
+
     static async Task Main(string[] args)
     {
+        var builder = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+        IConfiguration configuration = builder.Build();
+
+        using var httpClient = new HttpClient();
         var contextFactory = new SampleContextFactory();
 
         using (var context = contextFactory.CreateDbContext(args))
         {
-            Console.WriteLine("Проверка наличия данных...");
+            Console.WriteLine("Проверка данных...");
             context.Database.Migrate();
             DbSeeder.Seed(context);
             Console.Clear();
 
-            var service = new InventoryService(context);
+            var invService = new InventoryService(context);
+            var curService = new CurrencyService(httpClient, configuration);
             var playerName = "Player_01";
 
             bool exit = false;
@@ -34,24 +45,24 @@ class Program
                 Console.Write("> ");
 
                 string? input = Console.ReadLine();
-                Console.WriteLine("\n");
+                Console.WriteLine();
 
                 switch (input)
                 {
                     case "1":
-                        await ShowInventory(service, playerName); break;
+                        await ShowInventory(invService, playerName); break;
                     case "2":
-                        await Shopping(service, playerName); break;
+                        await Shopping(invService, playerName); break;
                     case "3":
-                        await OpenLombard(service, playerName); break;
+                        await OpenLombard(invService, playerName); break;
                     case "4":
-                        await Grind(service, playerName); break;
+                        await Grind(invService, playerName); break;
                     case "5":
-                        await OpenCurrencyExchanger(service, playerName); break;
+                        await OpenCurrencyExchanger(curService, invService, playerName); break;
                     case "0":
                         exit = true; break;
                     default:
-                        Console.WriteLine("Неизвестная команда"); break;
+                        Console.WriteLine("Неизвестная команда."); WaitAndClear(); break;
                 }
             }
         }
@@ -59,6 +70,7 @@ class Program
 
     static async Task ShowInventory(InventoryService service, string playerName)
     {
+        Console.Clear();
         Console.WriteLine("----------------  ИНВЕНТАРЬ  ----------------");
 
         var player = await service.GetPlayerAsync(playerName);
@@ -73,7 +85,9 @@ class Program
             {
                 foreach (var slot in player.Inventory)
                 {
-                    Console.WriteLine($"  [{slot.Amount} шт] {slot.Item.Name}");
+                    Console.WriteLine($" [{slot.Amount} шт] {slot.Item.Name}");
+                    if (!string.IsNullOrEmpty(slot.Item.Description))
+                        Console.WriteLine($"  \"{slot.Item.Description}\"");
                 }
             }
             else
@@ -86,16 +100,22 @@ class Program
 
     static async Task Shopping(InventoryService service, string playerName)
     {
+        Console.Clear();
         var items = await service.GetShopItemsAsync();
         bool exit = false;
 
         while (!exit)
         {
             var player = await service.GetPlayerAsync(playerName);
-            if (player != null)
-                Console.WriteLine($"Баланс: {player.Gold} золота | {player.Gems} брюлликов");
+            if (player == null)
+            {
+                Console.WriteLine("Игрок не найден.");
+                exit = true;
+                return;
+            }
 
-            Console.WriteLine("\n----------------  СЕМЁРОЧКА  ----------------");
+            Console.WriteLine("----------------  СЕМЁРОЧКА  ----------------");
+            Console.WriteLine($"Баланс: {player.Gold} золота | {player.Gems} брюлликов.\n");
 
             for (int i = 0; i < items.Count; i++)
             {
@@ -136,19 +156,20 @@ class Program
 
     static async Task OpenLombard(InventoryService service, string playerName)
     {
+        Console.Clear();
         bool exit = false;
         while (!exit)
         {
             var player = await service.GetPlayerAsync(playerName);
             if (player == null)
             {
-                Console.WriteLine("Игрок не найден");
+                Console.WriteLine("Игрок не найден.");
                 exit = true;
                 return;
             }
 
             Console.WriteLine("--------------  СКУПОЙ РЫЦАРЬ  --------------");
-            Console.WriteLine($"Баланс: {player.Gold} золота | {player.Gems} брюлликов");
+            Console.WriteLine($"Баланс: {player.Gold} золота | {player.Gems} брюлликов.");
             Console.WriteLine("Ваш инвентарь:");
 
             if (player.Inventory.Count == 0)
@@ -191,6 +212,7 @@ class Program
 
     static async Task Grind(InventoryService service, string playerName)
     {
+        Console.Clear();
         Console.CursorVisible = false;
         try
         {
@@ -198,7 +220,7 @@ class Program
             "Зачистка данжа",
             "Фарминг мобов",
             "Пылесосинг локации"];
-            string phrase = activities[new Random().Next(activities.Length)];
+            string phrase = activities[_rnd.Next(activities.Length)];
 
             Console.Write($"~ {phrase}");
             for (int dot = 0; dot < 6; dot++)
@@ -212,9 +234,8 @@ class Program
                 }
             }
 
-            var rnd = new Random();
-            int goldRew = rnd.Next(10, 15);
-            int gemsRew = rnd.Next(1, 4);
+            int goldRew = _rnd.Next(10, 17);
+            int gemsRew = _rnd.Next(0, 3);
 
             var result = await service.AddRewardAsync(playerName, goldRew, gemsRew);
             Console.WriteLine($"\n{result}");
@@ -224,13 +245,81 @@ class Program
             Console.CursorVisible = true;
         }
 
+        Console.WriteLine("\nНажмите любую клавишу.");
         WaitAndClear();
     }
 
-    static async Task OpenCurrencyExchanger(InventoryService service, string playerName)
+    static async Task OpenCurrencyExchanger(CurrencyService curService, InventoryService invService, string playerName)
     {
-        Console.WriteLine("Функция в разработке...");
-        WaitAndClear();
+        Console.Clear();
+        Console.WriteLine("Загрузка курса с биржи...");
+        int curRate = await curService.GetGemPriceInGoldAsync();
+
+        bool exit = false;
+        while (!exit)
+        {
+            var player = await invService.GetPlayerAsync(playerName);
+
+            Console.Clear();
+            Console.WriteLine("-----------------  ОБМЕННИК  -----------------");
+            Console.WriteLine($"Курс валют: 1 Брл = {curRate} Злт");
+            Console.WriteLine($"Ваш баланс: {player!.Gold} золота | {player.Gems} брюлликов\n");
+            Console.WriteLine("1. Обменять золото на брюллики");
+            Console.WriteLine("2. Обменять брюллики на золото");
+            Console.WriteLine("0. Выйти");
+            Console.Write("> ");
+            string? input = Console.ReadLine();
+
+            switch (input)
+            {
+                case "1":
+                    await TryExchange(invService, playerName, curRate, isBuying: true); break;
+                case "2":
+                    await TryExchange(invService, playerName, curRate, isBuying: false); break;
+                case "0":
+                    exit = true; Console.Clear(); return;
+                default:
+                    Console.WriteLine("Неизвестная команда"); break;
+            }
+
+            WaitAndClear();
+        }
+    }
+
+    static async Task TryExchange(InventoryService invService, string playerName, int rate, bool isBuying)
+    {
+        string actionText = isBuying ? "получить" : "обменять";
+        Console.Write($"\nВведите количество Брюлликов, которое хотите {actionText}: ");
+
+        if (!int.TryParse(Console.ReadLine(), out int amount) || amount <= 0)
+        {
+            Console.WriteLine("Ошибка ввода.");
+            return;
+        }
+
+        int totalGold = rate * amount;
+        Console.WriteLine(isBuying 
+            ? $"Это будет стоить {totalGold} Злт."
+            : $"Вы получите {totalGold} Злт.");
+        Console.WriteLine("Нажмите [Enter] для подтверждения или [Esc] для отмены.\n");
+
+        while (true)
+        {
+            var key = Console.ReadKey(intercept: true).Key;
+
+            if (key == ConsoleKey.Enter)
+            {
+                int gemChange = isBuying ? amount : -amount;
+                string reuslt = await invService.ExchangeGemsAsync(playerName, gemChange, rate);
+                Console.WriteLine(reuslt);
+                break;
+            }
+            else if (key == ConsoleKey.Escape)
+            {
+                Console.WriteLine("Операция отменена.");
+                break;
+            }
+        }
     }
 
     static void WaitAndClear()
