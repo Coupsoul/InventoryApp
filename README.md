@@ -6,9 +6,8 @@
 </p>
 <br>
 <p align="center">
-  <img src="InventoryApp/Assets/main_menu.webp" alt="Главное меню" width="420">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="InventoryApp/Assets/trade.webp" alt="Обменник" width="420">
+  <img src="InventoryApp/Assets/main_menu.webp" alt="Главное меню" width="400">
+  <img src="InventoryApp/Assets/trade.webp" alt="Обменник" width="400">
 </p>
 <br>
 
