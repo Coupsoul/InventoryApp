@@ -5,7 +5,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace InventoryApp.Services
 {
-    internal class CurrencyService
+    public class CurrencyService
     {
         private readonly HttpClient _httpClient;
         private readonly string _apiUrl;
@@ -16,6 +16,7 @@ namespace InventoryApp.Services
             _apiUrl = configuration["BinanceApiUrl"] ?? throw new Exception("URL API не найден в appsettings.json.");
         }
 
+
         public async Task<int> GetGemPriceInGoldAsync()
         {
             decimal btcPrice = await GetRawBtcPriceAsync();
@@ -24,6 +25,7 @@ namespace InventoryApp.Services
 
             return (int)(btcPrice / 1000);
         }
+
 
         private async Task<decimal> GetRawBtcPriceAsync()
         {
