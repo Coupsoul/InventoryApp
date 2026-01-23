@@ -7,6 +7,7 @@ namespace InventoryApp.Services
 {
     public class InventoryService
     {
+        private readonly Random _rnd = new Random();
         private readonly ApplicationContext _context;
 
         public InventoryService(ApplicationContext context)
@@ -22,10 +23,12 @@ namespace InventoryApp.Services
                 .FirstOrDefaultAsync(p => p.Name == name);
         }
 
+
         public async Task<List<Item>> GetShopItemsAsync()
         {
             return await _context.Items.ToListAsync();
         }
+
 
         public async Task<string> BuyItemAsync(string playerName, string itemName)
         {
@@ -81,6 +84,7 @@ namespace InventoryApp.Services
             }
         }
 
+
         public async Task<string> SellItemAsync(string playerName, string itemName)
         {
             using (var transaction = await _context.Database.BeginTransactionAsync())
@@ -125,17 +129,29 @@ namespace InventoryApp.Services
             }
         }
 
-        public async Task<string> AddRewardAsync(string playerName, int goldAmount, int gemsAmount)
+
+        public async Task AddRewardAsync(string playerName, int goldAmount, int gemsAmount)
         {
             var player = await _context.Players.FirstOrDefaultAsync(p => p.Name == playerName);
-            if (player == null) return "Игрок не найден.";
+            if (player == null) return;
 
             player.Gold += goldAmount;
             player.Gems += gemsAmount;
 
             await _context.SaveChangesAsync();
-            return $"Залутано {goldAmount} золота и {gemsAmount} брюлликов.";
         }
+
+
+        public async Task<(int gold, int gems)> ProcessGrindAsync(string playerName)
+        {
+            int gold = _rnd.Next(10, 17);
+            int gems = _rnd.Next(0, 3);
+
+            await AddRewardAsync(playerName, gold, gems);
+
+            return (gold, gems);
+        }
+
 
         public async Task<string> ExchangeGemsAsync(string playerName, int gemsChange, int goldRate)
         {
