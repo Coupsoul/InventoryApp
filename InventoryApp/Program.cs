@@ -6,6 +6,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
+using System.Text.Json;
+using System.Text.Encodings.Web;
+using InventoryApp.Entities;
+
 class Program
 {
     static async Task Main(string[] args)
@@ -35,7 +39,7 @@ class Program
         DbSeeder.Seed(context);
         Console.Clear();
 
-        var playerName = "Player_01";
+        var playerName = "admin";
 
         await ui.RunMainMenuAsync(playerName);
     }

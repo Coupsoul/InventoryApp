@@ -5,6 +5,7 @@ namespace InventoryApp.UI
 {
     public class ConsoleInterface
     {
+        private readonly Random _rnd = new Random();
         private readonly InventoryService _invService;
         private readonly CurrencyService _curService;
 
@@ -66,10 +67,11 @@ namespace InventoryApp.UI
             {
                 Console.WriteLine($"{player.Name}");
                 Console.WriteLine($"Баланс: {player.Gold} золота | {player.Gems} брюлликов");
-                Console.WriteLine("Инвентарь:");
+                Console.Write("Инвентарь:");
 
                 if (player.Inventory.Count != 0)
                 {
+                    Console.WriteLine();
                     foreach (var slot in player.Inventory)
                     {
                         Console.WriteLine($" [{slot.Amount} шт] {slot.Item.Name}");
@@ -78,7 +80,7 @@ namespace InventoryApp.UI
                     }
                 }
                 else
-                    Console.WriteLine("Инвентарь пуст.");
+                    Console.WriteLine(" пуст.");
             }
 
             Console.WriteLine("\nНажмите любую клавишу для продолжения.");
@@ -159,16 +161,17 @@ namespace InventoryApp.UI
 
                 Console.WriteLine("--------------  СКУПОЙ РЫЦАРЬ  --------------");
                 Console.WriteLine($"Баланс: {player.Gold} золота | {player.Gems} брюлликов.");
-                Console.WriteLine("Ваш инвентарь:");
+                Console.Write("Ваш инвентарь:");
 
                 if (player.Inventory.Count == 0)
                 {
-                    Console.WriteLine("   (пусто)\n");
-                    Console.WriteLine("Заходи, когда будет что продать.");
+                    Console.WriteLine(" пуст.");
+                    Console.WriteLine("\nЗаходи, когда будет что продать.");
                     WaitAndClear();
                     return;
                 }
 
+                Console.WriteLine();
                 var invItems = player.Inventory.ToList();
                 for (int i = 0; i < invItems.Count; i++)
                 {
@@ -210,7 +213,7 @@ namespace InventoryApp.UI
                     "Зачистка данжа",
                     "Фарминг мобов",
                     "Пылесосинг локации"];
-                string phrase = activities[new Random().Next(activities.Length)];
+                string phrase = activities[_rnd.Next(activities.Length)];
 
                 Console.Write($"~ {phrase}");
                 for (int dot = 0; dot < 6; dot++)

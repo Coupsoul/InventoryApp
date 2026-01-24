@@ -20,10 +20,14 @@ namespace InventoryApp.Data
             {
                 entity.Property(p => p.Name)
                 .IsRequired()
-                .HasMaxLength(100);
+                .HasMaxLength(50);
 
                 entity.HasIndex(p => p.Name)
                 .IsUnique();
+
+                entity.Property(p => p.PasswordHash)
+                .IsRequired()
+                .HasMaxLength(100);
 
                 entity.HasMany(p => p.Inventory)
                 .WithOne(ii => ii.Player)

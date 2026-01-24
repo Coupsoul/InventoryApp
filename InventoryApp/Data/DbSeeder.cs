@@ -1,5 +1,6 @@
-﻿using InventoryApp.Entities;
-using InventoryApp.Enums;
+﻿using static BCrypt.Net.BCrypt;
+using InventoryApp.Entities;
+using System.Text.Json;
 
 namespace InventoryApp.Data
 {
@@ -7,26 +8,40 @@ namespace InventoryApp.Data
     {
         public static void Seed(ApplicationContext context)
         {
-            if(context.Items.Any())
-                return;
-
-            var items = new List<Item>
+            if (!context.Items.Any())
             {
-                new Item("Ржавая вилка", Currency.Gold, 3, "Есть такой не стоит, но пару раз куда-нибудь воткнуть - сойдёт."),
-                new Item("Шнур", Currency.Gold, 1, "Верёвка длиной не больше локтя."),
-                new Item("Случайное зелье", Currency.Gems, 4, "Пока не выпьешь - не узнаешь."),
-                new Item("Палка", Currency.Gold, 0, "Что-то там про раз в год...")
-            };
+                var filePath = "default_items.json";
 
-            context.Items.AddRange(items);
+                if (File.Exists(filePath))
+                {
+                    var jsonString = File.ReadAllText(filePath);
 
-            if (!context.Players.Any())
+                    var items = JsonSerializer.Deserialize<List<Item>>(jsonString);
+
+                    if (items != null && items.Any())
+                    {
+                        context.Items.AddRange(items);
+                        context.SaveChanges();
+                        Console.WriteLine($"Загружено {items.Count} предметов по умолчанию.");
+                        Thread.Sleep(1500);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Предметы по умолчанию не найдены.");
+                    Thread.Sleep(1500);
+                }
+            }
+
+            if (!context.Players.Any(p => p.IsAdmin))
             {
                 context.Players.Add(new Player
                 {
-                    Name = "Player_01",
-                    Gold = 10,
-                    Gems = 4
+                    Name = "admin",
+                    PasswordHash = HashPassword("admin"),
+                    Gold = 99999,
+                    Gems = 99999,
+                    IsAdmin = true
                 });
             }
 
