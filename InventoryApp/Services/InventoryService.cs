@@ -15,7 +15,7 @@ namespace InventoryApp.Services
             _context = context;
         }
 
-        public async Task<Player?> GetPlayerAsync(string name)
+        public async Task<Player?> GetPlayerWithInventoryAsync(string name)
         {
             return await _context.Players
                 .Include(p => p.Inventory)
@@ -91,7 +91,7 @@ namespace InventoryApp.Services
             {
                 try
                 {
-                    var player = await GetPlayerAsync(playerName);
+                    var player = await GetPlayerWithInventoryAsync(playerName);
                     if (player == null) return "Игрок не найден.";
                     var inventoryItem = player.Inventory.FirstOrDefault(ii => ii.Item.Name == itemName);
                     if (inventoryItem == null) return "В инвентаре нет такого предмета.";
@@ -156,7 +156,7 @@ namespace InventoryApp.Services
         public async Task<string> ExchangeGemsAsync(string playerName, int gemsChange, int goldRate)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
-            var player = await GetPlayerAsync(playerName);
+            var player = await GetPlayerWithInventoryAsync(playerName);
             if (player == null) return "Игрок не найден.";
 
             int goldDiff = gemsChange * goldRate;

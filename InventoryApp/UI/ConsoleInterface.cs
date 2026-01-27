@@ -1,4 +1,5 @@
-﻿using InventoryApp.Enums;
+﻿using InventoryApp.Entities;
+using InventoryApp.Enums;
 using InventoryApp.Services;
 
 namespace InventoryApp.UI
@@ -13,6 +14,44 @@ namespace InventoryApp.UI
         {
             _invService = invService;
             _curService = curService;
+        }
+
+
+        private string ReadLineWithLimit(int maxLength, bool isPassword = false)
+        {
+            string input = "";
+            ConsoleKeyInfo key;
+
+            do
+            {
+                key = Console.ReadKey(intercept: true);
+
+                if (key.Key == ConsoleKey.Backspace && input.Length > 0)
+                {
+                    input = input.Remove(input.Length - 1);
+                    Console.Write("\b \b");
+                }
+                else if (!char.IsControl(key.KeyChar) && key.KeyChar != '\u0000' && input.Length < maxLength)
+                {
+                    input += key.KeyChar;
+                    Console.Write(isPassword ? '*' : key.KeyChar);
+                }
+            } while (key.Key != ConsoleKey.Enter || input.Length == 0);
+
+            Console.WriteLine();
+            return input;
+        }
+
+
+        public async Task<Player> AuthorizeAsync()
+        {
+            Console.Clear();
+            Console.WriteLine("===============  АВТОРИЗАЦИЯ  ===============");
+
+            while (true)
+            {
+
+            }
         }
 
 
@@ -61,7 +100,7 @@ namespace InventoryApp.UI
             Console.Clear();
             Console.WriteLine("----------------  ИНВЕНТАРЬ  ----------------");
 
-            var player = await _invService.GetPlayerAsync(playerName);
+            var player = await _invService.GetPlayerWithInventoryAsync(playerName);
 
             if (player != null)
             {
@@ -96,7 +135,7 @@ namespace InventoryApp.UI
 
             while (!exit)
             {
-                var player = await _invService.GetPlayerAsync(playerName);
+                var player = await _invService.GetPlayerWithInventoryAsync(playerName);
                 if (player == null)
                 {
                     Console.WriteLine("Игрок не найден.");
@@ -151,7 +190,7 @@ namespace InventoryApp.UI
             bool exit = false;
             while (!exit)
             {
-                var player = await _invService.GetPlayerAsync(playerName);
+                var player = await _invService.GetPlayerWithInventoryAsync(playerName);
                 if (player == null)
                 {
                     Console.WriteLine("Игрок не найден.");
@@ -250,7 +289,7 @@ namespace InventoryApp.UI
             bool exit = false;
             while (!exit)
             {
-                var player = await _invService.GetPlayerAsync(playerName);
+                var player = await _invService.GetPlayerWithInventoryAsync(playerName);
 
                 Console.Clear();
                 Console.WriteLine("-----------------  ОБМЕННИК  -----------------");
