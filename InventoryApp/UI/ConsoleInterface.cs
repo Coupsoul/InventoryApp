@@ -1,19 +1,21 @@
 ﻿using InventoryApp.Entities;
 using InventoryApp.Enums;
-using InventoryApp.Services;
+using InventoryApp.Services.Interfaces;
 
 namespace InventoryApp.UI
 {
     public class ConsoleInterface
     {
         private readonly Random _rnd = new Random();
-        private readonly InventoryService _invService;
-        private readonly CurrencyService _curService;
+        private readonly IInventoryService _invService;
+        private readonly ICurrencyService _curService;
+        private readonly IUserService _userService;
 
-        public ConsoleInterface(InventoryService invService, CurrencyService curService)
+        public ConsoleInterface(IInventoryService invService, ICurrencyService curService, IUserService userService)
         {
             _invService = invService;
             _curService = curService;
+            _userService = userService;
         }
 
 
@@ -50,7 +52,52 @@ namespace InventoryApp.UI
 
             while (true)
             {
+                Console.Write("\nВведите имя: ");
+                string playerName = ReadLineWithLimit(50);
 
+                bool exists = await _userService.CheckExistPlayerAsync(playerName);
+
+                if (exists)
+                {
+                    Console.Write("\nВведите пароль: ");
+                    string password = ReadLineWithLimit(20, true);
+
+                    var player = await _userService.SignInAsync(playerName, password);
+
+                    if (player != null)
+                    {
+                        Console.WriteLine($"\nС возвращением, {playerName}!");
+                        await Task.Delay(1500);
+                        Console.Clear();
+                        return player;
+                    }
+                    else
+                    {
+                        Console.WriteLine("\nНеверно введён пароль. Попробуйте снова.\n" + new string('_', 45));
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("\nИгрока с таким именем ещё нет. Приступим к регистрации.");
+
+                    string pass1, pass2;
+                    do
+                    {
+                        Console.Write("\nВведите пароль: ");
+                        pass1 = ReadLineWithLimit(20, true);
+                        Console.Write("Повторите пароль: ");
+                        pass2 = ReadLineWithLimit(20, true);
+
+                        if (pass1 != pass2) Console.WriteLine("\nПароли не совпадают!\n" + new string('_', 45));
+                    }
+                    while (pass1 != pass2);
+
+                    var newPlayer = await _userService.RegisterAsync(playerName, pass2);
+                    Console.WriteLine($"\nРегистрация успешна! Добро пожаловать, {playerName}.");
+                    await Task.Delay(1500);
+                    Console.Clear();
+                    return newPlayer;
+                }
             }
         }
 
@@ -60,7 +107,7 @@ namespace InventoryApp.UI
             bool exit = false;
             while (!exit)
             {
-                Console.WriteLine($"Добро пожаловать, {playerName}!");
+                Console.WriteLine($"[{playerName}]");
 
                 Console.WriteLine("\nВыберите действие");
                 Console.WriteLine("1. Мой инвентарь");

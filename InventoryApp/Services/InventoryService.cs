@@ -1,11 +1,12 @@
 ﻿using InventoryApp.Data;
 using InventoryApp.Entities;
 using InventoryApp.Enums;
+using InventoryApp.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace InventoryApp.Services
 {
-    public class InventoryService
+    public class InventoryService : IInventoryService
     {
         private readonly Random _rnd = new Random();
         private readonly ApplicationContext _context;

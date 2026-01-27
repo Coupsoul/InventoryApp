@@ -1,10 +1,11 @@
 ﻿using InventoryApp.Data;
 using InventoryApp.Entities;
+using InventoryApp.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace InventoryApp.Services
 {
-    public class UserService
+    public class UserService : IUserService
     {
         private readonly ApplicationContext _context;
 
@@ -26,6 +27,29 @@ namespace InventoryApp.Services
         }
 
 
-        public async 
+        public async Task<Player?> SignInAsync(string name, string password)
+        {
+            var player = await GetPlayerAsync(name);
+            if (player == null) return null;
+
+            bool isValid = BCrypt.Net.BCrypt.Verify(password, player.PasswordHash);
+            return isValid ? player : null;
+        }
+
+
+        public async Task<Player> RegisterAsync(string name, string password)
+        {
+            var player = new Player
+            {
+                Name = name,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+                Gold = 10,
+                Gems = 0
+            };
+            
+            _context.Players.Add(player);
+            await _context.SaveChangesAsync();
+            return player;
+        }
     }
 }
