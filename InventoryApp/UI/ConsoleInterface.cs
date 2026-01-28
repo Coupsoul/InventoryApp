@@ -1,17 +1,104 @@
-﻿using InventoryApp.Enums;
-using InventoryApp.Services;
+﻿using InventoryApp.Entities;
+using InventoryApp.Enums;
+using InventoryApp.Services.Interfaces;
 
 namespace InventoryApp.UI
 {
     public class ConsoleInterface
     {
-        private readonly InventoryService _invService;
-        private readonly CurrencyService _curService;
+        private readonly Random _rnd = new Random();
+        private readonly IInventoryService _invService;
+        private readonly ICurrencyService _curService;
+        private readonly IUserService _userService;
 
-        public ConsoleInterface(InventoryService invService, CurrencyService curService)
+        public ConsoleInterface(IInventoryService invService, ICurrencyService curService, IUserService userService)
         {
             _invService = invService;
             _curService = curService;
+            _userService = userService;
+        }
+
+
+        private string ReadLineWithLimit(int maxLength, bool isPassword = false)
+        {
+            string input = "";
+            ConsoleKeyInfo key;
+
+            do
+            {
+                key = Console.ReadKey(intercept: true);
+
+                if (key.Key == ConsoleKey.Backspace && input.Length > 0)
+                {
+                    input = input.Remove(input.Length - 1);
+                    Console.Write("\b \b");
+                }
+                else if (!char.IsControl(key.KeyChar) && key.KeyChar != '\u0000' && input.Length < maxLength)
+                {
+                    input += key.KeyChar;
+                    Console.Write(isPassword ? '*' : key.KeyChar);
+                }
+            } while (key.Key != ConsoleKey.Enter || input.Length == 0);
+
+            Console.WriteLine();
+            return input;
+        }
+
+
+        public async Task<Player> AuthorizeAsync()
+        {
+            Console.Clear();
+            Console.WriteLine("===============  АВТОРИЗАЦИЯ  ===============");
+
+            while (true)
+            {
+                Console.Write("\nВведите имя: ");
+                string playerName = ReadLineWithLimit(50);
+
+                bool exists = await _userService.CheckExistPlayerAsync(playerName);
+
+                if (exists)
+                {
+                    Console.Write("\nВведите пароль: ");
+                    string password = ReadLineWithLimit(20, true);
+
+                    var player = await _userService.SignInAsync(playerName, password);
+
+                    if (player != null)
+                    {
+                        Console.WriteLine($"\nС возвращением, {playerName}!");
+                        await Task.Delay(1500);
+                        Console.Clear();
+                        return player;
+                    }
+                    else
+                    {
+                        Console.WriteLine("\nНеверно введён пароль. Попробуйте снова.\n" + new string('_', 45));
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("\nИгрока с таким именем ещё нет. Приступим к регистрации.");
+
+                    string pass1, pass2;
+                    do
+                    {
+                        Console.Write("\nВведите пароль: ");
+                        pass1 = ReadLineWithLimit(20, true);
+                        Console.Write("Повторите пароль: ");
+                        pass2 = ReadLineWithLimit(20, true);
+
+                        if (pass1 != pass2) Console.WriteLine("\nПароли не совпадают!\n" + new string('_', 45));
+                    }
+                    while (pass1 != pass2);
+
+                    var newPlayer = await _userService.RegisterAsync(playerName, pass2);
+                    Console.WriteLine($"\nРегистрация успешна! Добро пожаловать, {playerName}.");
+                    await Task.Delay(1500);
+                    Console.Clear();
+                    return newPlayer;
+                }
+            }
         }
 
 
@@ -20,7 +107,7 @@ namespace InventoryApp.UI
             bool exit = false;
             while (!exit)
             {
-                Console.WriteLine($"Добро пожаловать, {playerName}!");
+                Console.WriteLine($"[{playerName}]");
 
                 Console.WriteLine("\nВыберите действие");
                 Console.WriteLine("1. Мой инвентарь");
@@ -60,16 +147,17 @@ namespace InventoryApp.UI
             Console.Clear();
             Console.WriteLine("----------------  ИНВЕНТАРЬ  ----------------");
 
-            var player = await _invService.GetPlayerAsync(playerName);
+            var player = await _invService.GetPlayerWithInventoryAsync(playerName);
 
             if (player != null)
             {
                 Console.WriteLine($"{player.Name}");
                 Console.WriteLine($"Баланс: {player.Gold} золота | {player.Gems} брюлликов");
-                Console.WriteLine("Инвентарь:");
+                Console.Write("Инвентарь:");
 
                 if (player.Inventory.Count != 0)
                 {
+                    Console.WriteLine();
                     foreach (var slot in player.Inventory)
                     {
                         Console.WriteLine($" [{slot.Amount} шт] {slot.Item.Name}");
@@ -78,7 +166,7 @@ namespace InventoryApp.UI
                     }
                 }
                 else
-                    Console.WriteLine("Инвентарь пуст.");
+                    Console.WriteLine(" пуст.");
             }
 
             Console.WriteLine("\nНажмите любую клавишу для продолжения.");
@@ -94,7 +182,7 @@ namespace InventoryApp.UI
 
             while (!exit)
             {
-                var player = await _invService.GetPlayerAsync(playerName);
+                var player = await _invService.GetPlayerWithInventoryAsync(playerName);
                 if (player == null)
                 {
                     Console.WriteLine("Игрок не найден.");
@@ -149,7 +237,7 @@ namespace InventoryApp.UI
             bool exit = false;
             while (!exit)
             {
-                var player = await _invService.GetPlayerAsync(playerName);
+                var player = await _invService.GetPlayerWithInventoryAsync(playerName);
                 if (player == null)
                 {
                     Console.WriteLine("Игрок не найден.");
@@ -159,16 +247,17 @@ namespace InventoryApp.UI
 
                 Console.WriteLine("--------------  СКУПОЙ РЫЦАРЬ  --------------");
                 Console.WriteLine($"Баланс: {player.Gold} золота | {player.Gems} брюлликов.");
-                Console.WriteLine("Ваш инвентарь:");
+                Console.Write("Ваш инвентарь:");
 
                 if (player.Inventory.Count == 0)
                 {
-                    Console.WriteLine("   (пусто)\n");
-                    Console.WriteLine("Заходи, когда будет что продать.");
+                    Console.WriteLine(" пуст.");
+                    Console.WriteLine("\nЗаходи, когда будет что продать.");
                     WaitAndClear();
                     return;
                 }
 
+                Console.WriteLine();
                 var invItems = player.Inventory.ToList();
                 for (int i = 0; i < invItems.Count; i++)
                 {
@@ -210,7 +299,7 @@ namespace InventoryApp.UI
                     "Зачистка данжа",
                     "Фарминг мобов",
                     "Пылесосинг локации"];
-                string phrase = activities[new Random().Next(activities.Length)];
+                string phrase = activities[_rnd.Next(activities.Length)];
 
                 Console.Write($"~ {phrase}");
                 for (int dot = 0; dot < 6; dot++)
@@ -247,7 +336,7 @@ namespace InventoryApp.UI
             bool exit = false;
             while (!exit)
             {
-                var player = await _invService.GetPlayerAsync(playerName);
+                var player = await _invService.GetPlayerWithInventoryAsync(playerName);
 
                 Console.Clear();
                 Console.WriteLine("-----------------  ОБМЕННИК  -----------------");

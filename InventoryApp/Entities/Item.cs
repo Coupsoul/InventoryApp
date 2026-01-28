@@ -12,10 +12,10 @@ namespace InventoryApp.Entities
         public List<InventoryItem> InventoryItems { get; set; } = new();
 
         private Item() { }
-        public Item(string name, Currency currency, int price, string? description = null)
+        public Item(string name, Currency priceCurrency, int price, string? description = null)
         {
             Name = name;
-            PriceCurrency = currency;
+            PriceCurrency = priceCurrency;
             Price = price;
             Description = description;
         }

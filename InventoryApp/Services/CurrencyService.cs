@@ -1,11 +1,12 @@
 ﻿using System.Globalization;
 using System.Net.Http.Json;
 using InventoryApp.DTOs;
+using InventoryApp.Services.Interfaces;
 using Microsoft.Extensions.Configuration;
 
 namespace InventoryApp.Services
 {
-    public class CurrencyService
+    public class CurrencyService : ICurrencyService
     {
         private readonly HttpClient _httpClient;
         private readonly string _apiUrl;

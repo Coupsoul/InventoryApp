@@ -1,0 +1,62 @@
+[
+  {
+    "Name": "Ржавая вилка",
+    "Description": "Есть такой не стоит, но пару раз куда-нибудь воткнуть - сойдёт.",
+    "Price": 3,
+    "PriceCurrency": 0
+  },
+  {
+    "Name": "Шнур",
+    "Description": "Верёвка длиной не больше локтя.",
+    "Price": 1,
+    "PriceCurrency": 0
+  },
+  {
+    "Name": "Случайное зелье",
+    "Description": "Пока не выпьешь - не узнаешь.",
+    "Price": 9,
+    "PriceCurrency": 1
+  },
+  {
+    "Name": "Палка",
+    "Description": "Что-то там про раз в год...",
+    "Price": 0,
+    "PriceCurrency": 0
+  },
+  {
+    "Name": "Меч стальной",
+    "Description": "Меч обыкновенный стальной, серийный, типовой.",
+    "Price": 49,
+    "PriceCurrency": 0
+  },
+  {
+    "Name": "Тяги бархатные",
+    "Description": "Это что за тяги? Уффф, такие бархатные тяги, ребята.",
+    "Price": 33,
+    "PriceCurrency": 0
+  },
+  {
+    "Name": "RAM DDR5",
+    "Description": "Входящий звонок: Смерть в нищите...",
+    "Price": 499,
+    "PriceCurrency": 1
+  },
+  {
+    "Name": "Штани за сорок гривень",
+    "Description": null,
+    "Price": 40,
+    "PriceCurrency": 0
+  },
+  {
+    "Name": "Курточка Stone Island",
+    "Description": "Патч, «Стоун», рефлектив, и ты молод и красив.",
+    "Price": 15,
+    "PriceCurrency": 1
+  },
+  {
+    "Name": "Тапок",
+    "Description": "При большой удаче можно использовать как мину.",
+    "Price": 8,
+    "PriceCurrency": 0
+  }
+]

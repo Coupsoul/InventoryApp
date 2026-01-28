@@ -1,10 +1,13 @@
 ﻿using InventoryApp.Data;
+using InventoryApp.Entities;
 using InventoryApp.Services;
+using InventoryApp.Services.Interfaces;
 using InventoryApp.UI;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+
 
 class Program
 {
@@ -16,8 +19,9 @@ class Program
                 string connection = context.Configuration.GetConnectionString("DefaultConnection")!;
 
                 services.AddDbContext<ApplicationContext>(options => options.UseSqlServer(connection));
-                services.AddHttpClient<CurrencyService>();
-                services.AddTransient<InventoryService>();
+                services.AddHttpClient<ICurrencyService, CurrencyService>();
+                services.AddTransient<IInventoryService, InventoryService>();
+                services.AddTransient<IUserService, UserService>();
                 services.AddTransient<ConsoleInterface>();
             })
             .Build();
@@ -26,8 +30,9 @@ class Program
         var services = scope.ServiceProvider;
 
         var context = services.GetRequiredService<ApplicationContext>();
-        var invService = services.GetRequiredService<InventoryService>();
-        var curService = services.GetRequiredService<CurrencyService>();
+        var invService = services.GetRequiredService<IInventoryService>();
+        var curService = services.GetRequiredService<ICurrencyService>();
+        var userService = services.GetRequiredService<IUserService>();
         var ui = services.GetRequiredService<ConsoleInterface>();
 
         Console.WriteLine("Проверка данных...");
@@ -35,8 +40,8 @@ class Program
         DbSeeder.Seed(context);
         Console.Clear();
 
-        var playerName = "Player_01";
+        Player player = await ui.AuthorizeAsync();
 
-        await ui.RunMainMenuAsync(playerName);
+        await ui.RunMainMenuAsync(player.Name);
     }
 }
