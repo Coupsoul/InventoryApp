@@ -280,7 +280,7 @@ namespace InventoryApp.UI
                 else if (int.TryParse(input, out int choice) && choice > 0 && choice <= invItems.Count)
                 {
                     Console.WriteLine(await _invService.SellItemAsync(playerName, invItems[choice - 1].Item.Name));
-                    Console.WriteLine("Нажмите любую клавишу для продолжения.");
+                    Console.WriteLine("\nНажмите любую клавишу для продолжения.");
                 }
                 else Console.WriteLine("Некорректный ввод. Нажмите любую клавишу.");
 
@@ -312,14 +312,21 @@ namespace InventoryApp.UI
                         Console.Write("\b\b\b   \b\b\b");
                     }
                 }
-
-                var (gold, gems) = await _invService.ProcessGrindAsync(playerName);
-
-                Console.WriteLine($"\nЗалутано {gold} золота и {gems} брюлликов.");
             }
             finally
             {
                 Console.CursorVisible = true;
+            }
+
+            var (gold, gems) = await _invService.ProcessGrindAsync(playerName);
+
+            if (gold == 0 && gems == 0)
+            {
+                Console.WriteLine("\nКошелёк переполнен! Вы не смогли ничего унести.");
+            }
+            else
+            {
+                Console.WriteLine($"\nЗалутано {gold} золота и {gems} брюлликов.");
             }
 
             Console.WriteLine("\nНажмите любую клавишу.");
@@ -388,8 +395,8 @@ namespace InventoryApp.UI
 
                 if (key == ConsoleKey.Enter)
                 {
-                    int gemChange = isBuying ? amount : -amount;
-                    string reuslt = await _invService.ExchangeGemsAsync(playerName, gemChange, rate);
+                    int gemsToExchange = isBuying ? amount : -amount;
+                    string reuslt = await _invService.ExchangeGemsAsync(playerName, gemsToExchange, rate);
                     Console.WriteLine(reuslt);
                     break;
                 }

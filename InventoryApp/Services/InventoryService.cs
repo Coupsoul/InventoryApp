@@ -9,6 +9,8 @@ namespace InventoryApp.Services
     public class InventoryService : IInventoryService
     {
         private readonly Random _rnd = new Random();
+        private readonly int _minGrindGold = 10, _maxGrindGold = 17;
+        private readonly int _minGrindGems = 0, _maxGrindGems = 3;
         private readonly ApplicationContext _context;
 
         public InventoryService(ApplicationContext context)
@@ -102,10 +104,14 @@ namespace InventoryApp.Services
 
                     if (itemData.PriceCurrency == Currency.Gold)
                     {
+                        if (player.Gold + sellPrice > Player.MaxGold)
+                            return $"Это нельзя продать - переполнится кошелёк.\nПределы:\n  для золота - {Player.MaxGold};\n  для брюлликов - {Player.MaxGems}.";
                         player.Gold += sellPrice;
                     }
                     else
                     {
+                        if (player.Gems + sellPrice > Player.MaxGems)
+                            return $"Это нельзя продать - переполнится кошелёк.\nПределы:\n  для золота - {Player.MaxGold};\n  для брюлликов - {Player.MaxGems}.";
                         player.Gems += sellPrice;
                     }
 
@@ -131,42 +137,45 @@ namespace InventoryApp.Services
         }
 
 
-        public async Task AddRewardAsync(string playerName, int goldAmount, int gemsAmount)
-        {
-            var player = await _context.Players.FirstOrDefaultAsync(p => p.Name == playerName);
-            if (player == null) return;
-
-            player.Gold += goldAmount;
-            player.Gems += gemsAmount;
-
-            await _context.SaveChangesAsync();
-        }
-
-
         public async Task<(int gold, int gems)> ProcessGrindAsync(string playerName)
         {
-            int gold = _rnd.Next(10, 17);
-            int gems = _rnd.Next(0, 3);
+            var player = await _context.Players.FirstOrDefaultAsync(p => p.Name == playerName);
+            if (player == null) return (0, 0);
 
-            await AddRewardAsync(playerName, gold, gems);
+            int oldGold = player.Gold;
+            int oldGems = player.Gems;
 
-            return (gold, gems);
+            int grindGold = _rnd.Next(_minGrindGold, _maxGrindGold);
+            int grindGems = _rnd.Next(_minGrindGems, _maxGrindGems);
+
+            player.Gold += grindGold;
+            player.Gems += grindGems;
+
+            await _context.SaveChangesAsync();
+
+            return (player.Gold - oldGold, player.Gems - oldGems);
         }
 
 
-        public async Task<string> ExchangeGemsAsync(string playerName, int gemsChange, int goldRate)
+        public async Task<string> ExchangeGemsAsync(string playerName, int gemsToExchange, int goldRate)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
             var player = await GetPlayerWithInventoryAsync(playerName);
             if (player == null) return "Игрок не найден.";
 
-            int goldDiff = gemsChange * goldRate;
+            int goldDiff = gemsToExchange * goldRate;
 
-            if (gemsChange > 0 && player.Gold < goldDiff) return "Цифры не сходятся. Для такой суммы нужно больше веса в кошельке.";
-            if (gemsChange < 0 && player.Gems < Math.Abs(gemsChange)) return "Цифры не сходятся. Для такой суммы нужно больше веса в кошельке.";
+            int nextGold = player.Gold - goldDiff;
+            int nextGems = player.Gems + gemsToExchange;
 
-            player.Gems += gemsChange;
-            player.Gold -= goldDiff;
+            if (nextGold < 0 || nextGems < 0)
+                return "Цифры не сходятся. Для такой суммы нужно больше веса в кошельке.";
+            
+            if (nextGold > Player.MaxGold || nextGems > Player.MaxGems)
+                return $"Обмен невозможен: кошелек переполнится.\nПределы:\n  для золота - {Player.MaxGold};\n  для брюлликов - {Player.MaxGems}.";
+
+            player.Gold = nextGold;
+            player.Gems = nextGems;
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
