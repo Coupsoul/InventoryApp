@@ -12,8 +12,6 @@ namespace InventoryApp.Services.Interfaces
 
         Task<string> SellItemAsync(string playerName, string itemName);
 
-        Task AddRewardAsync(string playerName, int goldAmount, int gemsAmount);
-
         Task<(int gold, int gems)> ProcessGrindAsync(string playerName);
 
         Task<string> ExchangeGemsAsync(string playerName, int gemsChange, int goldRate);
