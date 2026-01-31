@@ -11,5 +11,7 @@ namespace InventoryApp.Services.Interfaces
         Task<Player?> SignInAsync(string name, string password);
 
         Task<Player> RegisterAsync(string name, string password);
+
+        Task<bool> GrantAdminRightsAsync(string newAdminName, string playerName, string password);
     }
 }

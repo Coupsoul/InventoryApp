@@ -42,6 +42,6 @@ class Program
 
         Player player = await ui.AuthorizeAsync();
 
-        await ui.RunMainMenuAsync(player.Name);
+        await ui.RunMainMenuAsync(player);
     }
 }
