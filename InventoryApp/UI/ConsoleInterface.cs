@@ -19,7 +19,7 @@ namespace InventoryApp.UI
         }
 
 
-        private string ReadLineWithLimit(int maxLength, bool isPassword = false)
+        private string ReadLineWithLimit(int maxLength, bool isPassword = false, bool withNewLine = true)
         {
             string input = "";
             ConsoleKeyInfo key;
@@ -40,7 +40,7 @@ namespace InventoryApp.UI
                 }
             } while (key.Key != ConsoleKey.Enter || input.Length == 0);
 
-            Console.WriteLine();
+            if (withNewLine) { Console.WriteLine(); }
             return input;
         }
 
@@ -102,8 +102,10 @@ namespace InventoryApp.UI
         }
 
 
-        public async Task RunMainMenuAsync(string playerName)
+        public async Task RunMainMenuAsync(Player player)
         {
+            string playerName = player.Name;
+            bool isAdmin = player.IsAdmin;
             bool exit = false;
             while (!exit)
             {
@@ -115,6 +117,12 @@ namespace InventoryApp.UI
                 Console.WriteLine("3. Ломбард");
                 Console.WriteLine("4. Гринд");
                 Console.WriteLine("5. Обмен валют");
+                if (isAdmin)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkYellow;
+                    Console.WriteLine("999. Привилегии");
+                    Console.ResetColor();
+                }
                 Console.WriteLine("0. Выход");
                 Console.Write("> ");
 
@@ -133,6 +141,10 @@ namespace InventoryApp.UI
                         await GrindAsync(playerName); break;
                     case "5":
                         await OpenCurrencyExchangerAsync(playerName); break;
+                    case "999":
+                        if (isAdmin) { await RunAdminMenuAsync(playerName); }
+                        else { Console.WriteLine("Неизвестная команда."); WaitAndClear(); }
+                        break;
                     case "0":
                         exit = true; break;
                     default:
@@ -406,6 +418,177 @@ namespace InventoryApp.UI
                     break;
                 }
             }
+        }
+
+
+        private async Task RunAdminMenuAsync(string playerName)
+        {
+            bool exit = false;
+            while (!exit)
+            {
+                Console.Clear();
+                Console.WriteLine("~~~~~~~~~~~~~~~  ПРИВИЛЕГИИ  ~~~~~~~~~~~~~~~");
+                Console.WriteLine("\n1. Управлять состоянием");
+                Console.WriteLine("2. Учредить предмет");
+                Console.WriteLine("3. Наделить привилегиями");
+                Console.WriteLine("0. Выход");
+                Console.Write("> ");
+
+                var input = Console.ReadLine();
+
+                switch (input)
+                {
+                    case "1":
+                        await ManageFinances(playerName); break;
+                    case "2":
+                        await EstablishItemAsync(playerName); break;
+                    case "3":
+                        await GrantPrivilegesAsync(playerName); break;
+                    case "0":
+                        exit = true; Console.Clear(); return;
+                    default:
+                        Console.WriteLine("Неизвестная команда."); WaitAndClear(); break;
+                }
+            }
+
+            WaitAndClear();
+        }
+
+
+        private async Task GrantPrivilegesAsync(string playerName)
+        {
+            Console.Clear();
+            Console.WriteLine("---------------  ПОСВЯЩЕНИЕ  ---------------");
+            Console.Write("\nВведите имя посвящаемого: ");
+            string newAdminName = ReadLineWithLimit(50);
+            if (!(await _userService.CheckExistPlayerAsync(newAdminName)))
+            {
+                Console.WriteLine("Какая-то ошибка... Такого игрока нет.");
+                WaitAndClear();
+                return;
+            }
+
+            Console.Write("\nВведите свой пароль для подтверждения: ");
+            string passCheck = ReadLineWithLimit(20, true);
+            if (!(await _userService.GrantAdminRightsAsync(newAdminName, playerName, passCheck)))
+            {
+                Console.WriteLine("Сомневаюсь, что у тебя есть право даровать привелегии.");
+                WaitAndClear();
+                return;
+            }
+            Console.WriteLine($"{newAdminName} теперь один из нас!");
+            WaitAndClear();
+        }
+
+
+        private async Task ManageFinances(string playerName)
+        {
+            Console.Clear();
+            Console.WriteLine("-----------------  КОШЕЛЁК  -----------------");
+
+            int goldLength = Player.MaxGold.ToString().Length;
+            int gemsLength = Player.MaxGems.ToString().Length;
+
+            string part1 = "\"Хочу, чтоб у меня было ";
+            string part2 = " золота и ";
+            string part3 = " брюлликов...\"";
+
+            Console.Write(part1);
+            Console.Write(new string('_', goldLength));
+            Console.Write(part2);
+            Console.Write(new string('_', gemsLength));
+            Console.WriteLine(part3);
+
+            int cursorTop = Console.CursorTop - 1;
+
+            Console.SetCursorPosition(part1.Length, cursorTop);
+            if (!int.TryParse(ReadLineWithLimit(goldLength, withNewLine: false), out int goldToSet) || goldToSet < 0)
+            {
+                Console.WriteLine("\n\nЖелание не сбылось (ошибка ввода золота).");
+                WaitAndClear();
+                return;
+            }
+
+            int gemsCursorLeft = part1.Length + goldLength + part2.Length;
+
+            Console.SetCursorPosition(gemsCursorLeft, cursorTop);
+            if (!int.TryParse(ReadLineWithLimit(gemsLength, withNewLine: false), out int gemsToSet) || gemsToSet < 0)
+            {
+                Console.WriteLine("\n\nЖелание не сбылось (ошибка ввода брюлликов).");
+                WaitAndClear();
+                return;
+            }
+
+            await _invService.SetBalanceAsync(playerName, goldToSet, gemsToSet);
+
+            Console.SetCursorPosition(0, cursorTop + 2);
+            Console.WriteLine("Да будет так!");
+            WaitAndClear();
+
+            //Console.WriteLine("\"Хочу, чтоб у меня было вот столько денег...\"");
+            //Console.Write("Золота: ");
+            //if (!int.TryParse(ReadLineWithLimit(5), out int goldToSet) || goldToSet < 0)
+            //{
+            //    Console.WriteLine("Ошибка ввода.");
+            //    WaitAndClear();
+            //    return;
+            //}
+
+            //Console.Write("Брюлликов: ");
+            //if (!int.TryParse(ReadLineWithLimit(5), out int gemsToSet) || gemsToSet < 0)
+            //{
+            //    Console.WriteLine("Ошибка ввода.");
+            //    WaitAndClear();
+            //    return;
+            //}
+
+            //await _invService.SetBalanceAsync(playerName, goldToSet, gemsToSet);
+            //Console.WriteLine("");
+        }
+
+
+        private async Task EstablishItemAsync(string playerName)
+        {
+            Console.Clear();
+            Console.WriteLine("-----------  ДОБАВЛЕНИЕ В РЕЕСТР  -----------");
+            Console.Write("\nНаименование: ");
+            string itemName = ReadLineWithLimit(100);
+            Console.Write("\nОписание (необязательно): ");
+            string? description = Console.ReadLine();
+
+            Currency currency;
+            while (true)
+            {
+                Console.WriteLine("\nВалюта стоимости:");
+                Console.WriteLine(" 1) Золото");
+                Console.WriteLine(" 2) Брюллики");
+                Console.Write("> ");
+                string? input = Console.ReadLine();
+
+                if (input == "1") { currency = Currency.Gold; break; }
+                else if (input == "2") { currency = Currency.Gems; break; }
+
+                Console.WriteLine("Неизвестная команда.\nНажмите любую клавишу, чтобы попробовать выбрать заново.");
+                Console.ReadKey(true);
+            }
+
+            int price;
+            while (true)
+            {
+                int maxDigits = (currency == Currency.Gold ? Player.MaxGold : Player.MaxGems).ToString().Length;
+                Console.Write("\nСтоимость: ");
+                if (!int.TryParse(ReadLineWithLimit(maxDigits), out price) || price < 0)
+                {
+                    Console.WriteLine("Цена должна быть неотрицательным числом. Попробуйте ещё раз.");
+                    Console.ReadKey(true);
+                }
+                else
+                    break;
+            }
+
+            string result = await _invService.CreateItemAsync(playerName, itemName, currency, price, description);
+            Console.WriteLine("\n" + result);
+            WaitAndClear();
         }
 
 

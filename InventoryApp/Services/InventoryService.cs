@@ -170,7 +170,7 @@ namespace InventoryApp.Services
 
             if (nextGold < 0 || nextGems < 0)
                 return "Цифры не сходятся. Для такой суммы нужно больше веса в кошельке.";
-            
+
             if (nextGold > Player.MaxGold || nextGems > Player.MaxGems)
                 return $"Обмен невозможен: кошелек переполнится.\nПределы:\n  для золота - {Player.MaxGold};\n  для брюлликов - {Player.MaxGems}.";
 
@@ -181,6 +181,37 @@ namespace InventoryApp.Services
             await transaction.CommitAsync();
 
             return "Обмен прошёл успешно.";
+        }
+
+
+        public async Task SetBalanceAsync(string playerName, int gold, int gems)
+        {
+            var player = await _context.Players.FirstOrDefaultAsync(p => p.Name == playerName);
+            if (player == null) return;
+
+            player.Gold = gold;
+            player.Gems = gems;
+
+            await _context.SaveChangesAsync();
+        }
+
+
+        public async Task<string> CreateItemAsync(string adminName, string itemName, Currency priceCurrency, int price, string? description = null)
+        {
+            var admin = await _context.Players.FirstOrDefaultAsync(p => p.Name == adminName);
+            if (admin == null || !admin.IsAdmin) return "Ошибка доступа: У вас нет прав учредителя.";
+
+            var newItem = new Item(itemName, priceCurrency, price, description)
+            {
+                Name = itemName,
+                PriceCurrency = priceCurrency,
+                Price = price,
+                Description = description
+            };
+
+            _context.Items.Add(newItem);
+            await _context.SaveChangesAsync();
+            return $"\"{itemName}\" успешно внесен в реестр.";
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using InventoryApp.Entities;
+using InventoryApp.Enums;
 
 namespace InventoryApp.Services.Interfaces
 {
@@ -15,5 +16,9 @@ namespace InventoryApp.Services.Interfaces
         Task<(int gold, int gems)> ProcessGrindAsync(string playerName);
 
         Task<string> ExchangeGemsAsync(string playerName, int gemsChange, int goldRate);
+
+        Task SetBalanceAsync(string playerName, int gold, int gems);
+
+        Task<string> CreateItemAsync(string adminName, string itemName, Currency priceCurrency, int price, string? description = null);
     }
 }

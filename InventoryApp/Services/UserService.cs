@@ -51,5 +51,20 @@ namespace InventoryApp.Services
             await _context.SaveChangesAsync();
             return player;
         }
+
+
+        public async Task<bool> GrantAdminRightsAsync(string newAdminName, string playerName, string password)
+        {
+            var player = await GetPlayerAsync(playerName); if (player == null) return false;
+            var newAdmin = await GetPlayerAsync(newAdminName); if (newAdmin == null) return false;
+
+            if (!BCrypt.Net.BCrypt.Verify(password, player.PasswordHash))
+                return false;
+
+            newAdmin.IsAdmin = true;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }
