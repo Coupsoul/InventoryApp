@@ -55,48 +55,55 @@ namespace InventoryApp.UI
                 Console.Write("\nВведите имя: ");
                 string playerName = ReadLineWithLimit(50);
 
-                bool exists = await _userService.CheckExistPlayerAsync(playerName);
-
-                if (exists)
+                try
                 {
-                    Console.Write("\nВведите пароль: ");
-                    string password = ReadLineWithLimit(20, true);
+                    bool exists = await _userService.CheckExistPlayerAsync(playerName);
 
-                    var player = await _userService.SignInAsync(playerName, password);
-
-                    if (player != null)
+                    if (exists)
                     {
-                        Console.WriteLine($"\nС возвращением, {playerName}!");
-                        await Task.Delay(1500);
-                        Console.Clear();
-                        return player;
+                        Console.Write("\nВведите пароль: ");
+                        string password = ReadLineWithLimit(20, true);
+
+                        var player = await _userService.SignInAsync(playerName, password);
+
+                        if (player != null)
+                        {
+                            Console.WriteLine($"\nС возвращением, {playerName}!");
+                            await Task.Delay(1500);
+                            Console.Clear();
+                            return player;
+                        }
+                        else
+                        {
+                            Console.WriteLine("\nНеверно введён пароль. Попробуйте снова.\n" + new string('_', 45));
+                        }
                     }
                     else
                     {
-                        Console.WriteLine("\nНеверно введён пароль. Попробуйте снова.\n" + new string('_', 45));
+                        Console.WriteLine("\nИгрока с таким именем ещё нет. Приступим к регистрации.");
+
+                        string pass1, pass2;
+                        do
+                        {
+                            Console.Write("\nВведите пароль: ");
+                            pass1 = ReadLineWithLimit(20, true);
+                            Console.Write("Повторите пароль: ");
+                            pass2 = ReadLineWithLimit(20, true);
+
+                            if (pass1 != pass2) Console.WriteLine("\nПароли не совпадают!\n" + new string('_', 45));
+                        }
+                        while (pass1 != pass2);
+
+                        var newPlayer = await _userService.RegisterAsync(playerName, pass2);
+                        Console.WriteLine($"\nРегистрация успешна! Добро пожаловать, {playerName}.");
+                        await Task.Delay(1500);
+                        Console.Clear();
+                        return newPlayer;
                     }
                 }
-                else
+                catch (Exception ex)
                 {
-                    Console.WriteLine("\nИгрока с таким именем ещё нет. Приступим к регистрации.");
-
-                    string pass1, pass2;
-                    do
-                    {
-                        Console.Write("\nВведите пароль: ");
-                        pass1 = ReadLineWithLimit(20, true);
-                        Console.Write("Повторите пароль: ");
-                        pass2 = ReadLineWithLimit(20, true);
-
-                        if (pass1 != pass2) Console.WriteLine("\nПароли не совпадают!\n" + new string('_', 45));
-                    }
-                    while (pass1 != pass2);
-
-                    var newPlayer = await _userService.RegisterAsync(playerName, pass2);
-                    Console.WriteLine($"\nРегистрация успешна! Добро пожаловать, {playerName}.");
-                    await Task.Delay(1500);
-                    Console.Clear();
-                    return newPlayer;
+                    Console.WriteLine($"\nОшибка: {ex.Message}");
                 }
             }
         }
@@ -159,26 +166,34 @@ namespace InventoryApp.UI
             Console.Clear();
             Console.WriteLine("----------------  ИНВЕНТАРЬ  ----------------");
 
-            var player = await _invService.GetPlayerWithInventoryAsync(playerName);
-
-            if (player != null)
+            try
             {
-                Console.WriteLine($"{player.Name}");
-                Console.WriteLine($"Баланс: {player.Gold} золота | {player.Gems} брюлликов");
-                Console.Write("Инвентарь:");
+                var player = await _invService.GetPlayerWithInventoryAsync(playerName);
 
-                if (player.Inventory.Count != 0)
+
+                if (player != null)
                 {
-                    Console.WriteLine();
-                    foreach (var slot in player.Inventory)
+                    Console.WriteLine($"{player.Name}");
+                    Console.WriteLine($"Баланс: {player.Gold} золота | {player.Gems} брюлликов");
+                    Console.Write("Инвентарь:");
+
+                    if (player.Inventory.Count != 0)
                     {
-                        Console.WriteLine($" [{slot.Amount} шт] {slot.Item.Name}");
-                        if (!string.IsNullOrEmpty(slot.Item.Description))
-                            Console.WriteLine($"  \"{slot.Item.Description}\"");
+                        Console.WriteLine();
+                        foreach (var slot in player.Inventory)
+                        {
+                            Console.WriteLine($" [{slot.Amount} шт] {slot.Item.Name}");
+                            if (!string.IsNullOrEmpty(slot.Item.Description))
+                                Console.WriteLine($"  \"{slot.Item.Description}\"");
+                        }
                     }
+                    else
+                        Console.WriteLine(" пуст.");
                 }
-                else
-                    Console.WriteLine(" пуст.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка загрузки инвентаря: {ex.Message}");
             }
 
             Console.WriteLine("\nНажмите любую клавишу для продолжения.");
@@ -194,50 +209,56 @@ namespace InventoryApp.UI
 
             while (!exit)
             {
-                var player = await _invService.GetPlayerWithInventoryAsync(playerName);
-                if (player == null)
+                try
                 {
-                    Console.WriteLine("Игрок не найден.");
-                    exit = true;
-                    return;
-                }
-
-                Console.WriteLine("----------------  СЕМЁРОЧКА  ----------------");
-                Console.WriteLine($"Баланс: {player.Gold} золота | {player.Gems} брюлликов.\n");
-
-                for (int i = 0; i < items.Count; i++)
-                {
-                    var item = items[i];
-                    string currency = item.PriceCurrency switch
+                    var player = await _invService.GetPlayerWithInventoryAsync(playerName);
+                    if (player == null)
                     {
-                        Currency.Gold => "золота",
-                        Currency.Gems => "брюлликов",
-                        _ => item.PriceCurrency.ToString()
-                    };
-                    string priceStr = item.Price == 0 ? "бесплатно" : $"{item.Price} {currency}";
+                        Console.WriteLine("Игрок не найден.");
+                        exit = true;
+                        return;
+                    }
 
-                    Console.WriteLine($"{i + 1}. {item.Name}  -  {priceStr}");
-                    if (!string.IsNullOrEmpty(item.Description))
-                        Console.WriteLine($"  \"{item.Description}\"");
-                    Console.WriteLine();
+                    Console.WriteLine("----------------  СЕМЁРОЧКА  ----------------");
+                    Console.WriteLine($"Баланс: {player.Gold} золота | {player.Gems} брюлликов.\n");
+
+                    for (int i = 0; i < items.Count; i++)
+                    {
+                        var item = items[i];
+                        string currency = item.PriceCurrency switch
+                        {
+                            Currency.Gold => "золота",
+                            Currency.Gems => "брюлликов",
+                            _ => item.PriceCurrency.ToString()
+                        };
+                        string priceStr = item.Price == 0 ? "бесплатно" : $"{item.Price} {currency}";
+
+                        Console.WriteLine($"{i + 1}. {item.Name}  -  {priceStr}");
+                        if (!string.IsNullOrEmpty(item.Description))
+                            Console.WriteLine($"    \"{item.Description}\"");
+                        Console.WriteLine();
+                    }
+
+                    Console.WriteLine("~ Введите номер товара для покупки или 0, чтобы выйти:");
+                    Console.Write("> ");
+                    string? input = Console.ReadLine();
+                    if (input == "0")
+                    {
+                        exit = true;
+                        Console.Clear();
+                        return;
+                    }
+                    else if (int.TryParse(input, out int choice) && choice > 0 && choice <= items.Count)
+                    {
+                        Console.WriteLine(await _invService.BuyItemAsync(playerName, items[choice - 1].Name));
+                        Console.WriteLine("Нажмите любую клавишу для продолжения.");
+                    }
+                    else Console.WriteLine("Некорректный ввод. Нажмите любую клавишу.");
                 }
-
-                Console.WriteLine("~ Введите номер товара для покупки или 0, чтобы выйти:");
-                Console.Write("> ");
-                string? input = Console.ReadLine();
-                if (input == "0")
+                catch (Exception ex)
                 {
-                    exit = true;
-                    Console.Clear();
-                    return;
+                    Console.WriteLine($"Ошибка покупки: {ex.Message}");
                 }
-                else if (int.TryParse(input, out int choice) && choice > 0 && choice <= items.Count)
-                {
-                    Console.WriteLine(await _invService.BuyItemAsync(playerName, items[choice - 1].Name));
-                    Console.WriteLine("Нажмите любую клавишу для продолжения.");
-                }
-                else Console.WriteLine("Некорректный ввод. Нажмите любую клавишу.");
-
                 WaitAndClear();
             }
         }
@@ -249,52 +270,59 @@ namespace InventoryApp.UI
             bool exit = false;
             while (!exit)
             {
-                var player = await _invService.GetPlayerWithInventoryAsync(playerName);
-                if (player == null)
+                try
                 {
-                    Console.WriteLine("Игрок не найден.");
-                    exit = true;
-                    return;
+                    var player = await _invService.GetPlayerWithInventoryAsync(playerName);
+                    if (player == null)
+                    {
+                        Console.WriteLine("Игрок не найден.");
+                        exit = true;
+                        return;
+                    }
+
+                    Console.WriteLine("--------------  СКУПОЙ РЫЦАРЬ  --------------");
+                    Console.WriteLine($"Баланс: {player.Gold} золота | {player.Gems} брюлликов.");
+                    Console.Write("Ваш инвентарь:");
+
+                    if (player.Inventory.Count == 0)
+                    {
+                        Console.WriteLine(" пуст.");
+                        Console.WriteLine("\nЗаходи, когда будет что продать.");
+                        WaitAndClear();
+                        return;
+                    }
+
+                    Console.WriteLine();
+                    var invItems = player.Inventory.ToList();
+                    for (int i = 0; i < invItems.Count; i++)
+                    {
+                        var slot = invItems[i];
+                        var sellPrice = slot.Item.GetSellPrice();
+                        var currencyName = slot.Item.PriceCurrency == Currency.Gold ? "золота" : "брюлликов";
+                        Console.WriteLine($"{i + 1}. {slot.Item.Name}  ({slot.Amount} шт.)\t-\t{sellPrice} {currencyName}.");
+                    }
+
+                    Console.WriteLine("\n~ Введите номер предмета, который хотите продать, или 0, чтобы выйти:");
+                    Console.Write("> ");
+                    string? input = Console.ReadLine();
+
+                    if (input == "0")
+                    {
+                        exit = true;
+                        Console.Clear();
+                        return;
+                    }
+                    else if (int.TryParse(input, out int choice) && choice > 0 && choice <= invItems.Count)
+                    {
+                        Console.WriteLine(await _invService.SellItemAsync(playerName, invItems[choice - 1].Item.Name));
+                        Console.WriteLine("\nНажмите любую клавишу для продолжения.");
+                    }
+                    else Console.WriteLine("Некорректный ввод. Нажмите любую клавишу.");
                 }
-
-                Console.WriteLine("--------------  СКУПОЙ РЫЦАРЬ  --------------");
-                Console.WriteLine($"Баланс: {player.Gold} золота | {player.Gems} брюлликов.");
-                Console.Write("Ваш инвентарь:");
-
-                if (player.Inventory.Count == 0)
+                catch (Exception ex)
                 {
-                    Console.WriteLine(" пуст.");
-                    Console.WriteLine("\nЗаходи, когда будет что продать.");
-                    WaitAndClear();
-                    return;
+                    Console.WriteLine($"Ошибка продажи: {ex.Message}");
                 }
-
-                Console.WriteLine();
-                var invItems = player.Inventory.ToList();
-                for (int i = 0; i < invItems.Count; i++)
-                {
-                    var slot = invItems[i];
-                    var sellPrice = slot.Item.GetSellPrice();
-                    var currencyName = slot.Item.PriceCurrency == Currency.Gold ? "золота" : "брюлликов";
-                    Console.WriteLine($"{i + 1}. {slot.Item.Name}  ({slot.Amount} шт.)\t-\t{sellPrice} {currencyName}.");
-                }
-
-                Console.WriteLine("\n~ Введите номер предмета, который хотите продать, или 0, чтобы выйти:");
-                Console.Write("> ");
-                string? input = Console.ReadLine();
-
-                if (input == "0")
-                {
-                    exit = true;
-                    Console.Clear();
-                    return;
-                }
-                else if (int.TryParse(input, out int choice) && choice > 0 && choice <= invItems.Count)
-                {
-                    Console.WriteLine(await _invService.SellItemAsync(playerName, invItems[choice - 1].Item.Name));
-                    Console.WriteLine("\nНажмите любую клавишу для продолжения.");
-                }
-                else Console.WriteLine("Некорректный ввод. Нажмите любую клавишу.");
 
                 WaitAndClear();
             }
@@ -330,15 +358,22 @@ namespace InventoryApp.UI
                 Console.CursorVisible = true;
             }
 
-            var (gold, gems) = await _invService.ProcessGrindAsync(playerName);
+            try
+            {
+                var (gold, gems) = await _invService.ProcessGrindAsync(playerName);
 
-            if (gold == 0 && gems == 0)
-            {
-                Console.WriteLine("\nКошелёк переполнен! Вы не смогли ничего унести.");
+                if (gold == 0 && gems == 0)
+                {
+                    Console.WriteLine("\nКошелёк переполнен! Вы не смогли ничего унести.");
+                }
+                else
+                {
+                    Console.WriteLine($"\nЗалутано {gold} золота и {gems} брюлликов.");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Console.WriteLine($"\nЗалутано {gold} золота и {gems} брюлликов.");
+                Console.WriteLine($"Не получилось погриндить: {ex.Message}");
             }
 
             Console.WriteLine("\nНажмите любую клавишу.");
@@ -355,28 +390,35 @@ namespace InventoryApp.UI
             bool exit = false;
             while (!exit)
             {
-                var player = await _invService.GetPlayerWithInventoryAsync(playerName);
-
-                Console.Clear();
-                Console.WriteLine("-----------------  ОБМЕННИК  -----------------");
-                Console.WriteLine($"Курс валют: 1 Брл = {curRate} Злт");
-                Console.WriteLine($"Ваш баланс: {player!.Gold} золота | {player.Gems} брюлликов\n");
-                Console.WriteLine("1. Обменять золото на брюллики");
-                Console.WriteLine("2. Обменять брюллики на золото");
-                Console.WriteLine("0. Выйти");
-                Console.Write("> ");
-                string? input = Console.ReadLine();
-
-                switch (input)
+                try
                 {
-                    case "1":
-                        await TryExchangeAsync(playerName, curRate, isBuying: true); break;
-                    case "2":
-                        await TryExchangeAsync(playerName, curRate, isBuying: false); break;
-                    case "0":
-                        exit = true; Console.Clear(); return;
-                    default:
-                        Console.WriteLine("Неизвестная команда"); break;
+                    var player = await _invService.GetPlayerWithInventoryAsync(playerName);
+
+                    Console.Clear();
+                    Console.WriteLine("-----------------  ОБМЕННИК  -----------------");
+                    Console.WriteLine($"Курс валют: 1 Брл = {curRate} Злт");
+                    Console.WriteLine($"Ваш баланс: {player!.Gold} золота | {player.Gems} брюлликов\n");
+                    Console.WriteLine("1. Обменять золото на брюллики");
+                    Console.WriteLine("2. Обменять брюллики на золото");
+                    Console.WriteLine("0. Выйти");
+                    Console.Write("> ");
+                    string? input = Console.ReadLine();
+
+                    switch (input)
+                    {
+                        case "1":
+                            await TryExchangeAsync(playerName, curRate, isBuying: true); break;
+                        case "2":
+                            await TryExchangeAsync(playerName, curRate, isBuying: false); break;
+                        case "0":
+                            exit = true; Console.Clear(); return;
+                        default:
+                            Console.WriteLine("Неизвестная команда"); break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Ошибка в обменнике: {ex.Message}");
                 }
 
                 WaitAndClear();
@@ -389,7 +431,7 @@ namespace InventoryApp.UI
             string actionText = isBuying ? "получить" : "обменять";
             Console.Write($"\nВведите количество Брюлликов, которое хотите {actionText}: ");
 
-            if (!int.TryParse(Console.ReadLine(), out int amount) || amount <= 0)
+            if (!int.TryParse(ReadLineWithLimit(Player.MaxGems.ToString().Length), out int amount) || amount <= 0)
             {
                 Console.WriteLine("Ошибка ввода.");
                 return;
@@ -408,8 +450,8 @@ namespace InventoryApp.UI
                 if (key == ConsoleKey.Enter)
                 {
                     int gemsToExchange = isBuying ? amount : -amount;
-                    string reuslt = await _invService.ExchangeGemsAsync(playerName, gemsToExchange, rate);
-                    Console.WriteLine(reuslt);
+                    string result = await _invService.ExchangeGemsAsync(playerName, gemsToExchange, rate);
+                    Console.WriteLine(result);
                     break;
                 }
                 else if (key == ConsoleKey.Escape)
@@ -461,22 +503,26 @@ namespace InventoryApp.UI
             Console.WriteLine("---------------  ПОСВЯЩЕНИЕ  ---------------");
             Console.Write("\nВведите имя посвящаемого: ");
             string newAdminName = ReadLineWithLimit(50);
-            if (!(await _userService.CheckExistPlayerAsync(newAdminName)))
+            try
             {
-                Console.WriteLine("Какая-то ошибка... Такого игрока нет.");
-                WaitAndClear();
-                return;
+                if (!(await _userService.CheckExistPlayerAsync(newAdminName)))
+                {
+                    Console.WriteLine("Какая-то ошибка... Такого игрока нет.");
+                    WaitAndClear();
+                    return;
+                }
+
+                Console.Write("\nВведите свой пароль для подтверждения: ");
+                string passCheck = ReadLineWithLimit(20, true);
+
+                await _userService.GrantAdminRightsAsync(newAdminName, playerName, passCheck);
+                Console.WriteLine($"{newAdminName} теперь один из нас!");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка посвящения: {ex.Message}");
             }
 
-            Console.Write("\nВведите свой пароль для подтверждения: ");
-            string passCheck = ReadLineWithLimit(20, true);
-            if (!(await _userService.GrantAdminRightsAsync(newAdminName, playerName, passCheck)))
-            {
-                Console.WriteLine("Сомневаюсь, что у тебя есть право даровать привелегии.");
-                WaitAndClear();
-                return;
-            }
-            Console.WriteLine($"{newAdminName} теперь один из нас!");
             WaitAndClear();
         }
 
@@ -519,31 +565,19 @@ namespace InventoryApp.UI
                 return;
             }
 
-            await _invService.SetBalanceAsync(playerName, goldToSet, gemsToSet);
+            try
+            {
+                await _invService.SetBalanceAsync(playerName, goldToSet, gemsToSet);
+                Console.SetCursorPosition(0, cursorTop + 2);
+                Console.WriteLine("Да будет так!");
+            }
+            catch (Exception ex)
+            {
+                Console.SetCursorPosition(0, cursorTop + 2);
+                Console.WriteLine($"Ошибка установки баланса: {ex.Message}");
+            }
 
-            Console.SetCursorPosition(0, cursorTop + 2);
-            Console.WriteLine("Да будет так!");
             WaitAndClear();
-
-            //Console.WriteLine("\"Хочу, чтоб у меня было вот столько денег...\"");
-            //Console.Write("Золота: ");
-            //if (!int.TryParse(ReadLineWithLimit(5), out int goldToSet) || goldToSet < 0)
-            //{
-            //    Console.WriteLine("Ошибка ввода.");
-            //    WaitAndClear();
-            //    return;
-            //}
-
-            //Console.Write("Брюлликов: ");
-            //if (!int.TryParse(ReadLineWithLimit(5), out int gemsToSet) || gemsToSet < 0)
-            //{
-            //    Console.WriteLine("Ошибка ввода.");
-            //    WaitAndClear();
-            //    return;
-            //}
-
-            //await _invService.SetBalanceAsync(playerName, goldToSet, gemsToSet);
-            //Console.WriteLine("");
         }
 
 
@@ -586,8 +620,15 @@ namespace InventoryApp.UI
                     break;
             }
 
-            string result = await _invService.CreateItemAsync(playerName, itemName, currency, price, description);
-            Console.WriteLine("\n" + result);
+            try{
+                string result = await _invService.CreateItemAsync(playerName, itemName, currency, price, description);
+                Console.WriteLine("\n" + result);
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine($"Ошибка создания предмета: {ex.Message}");
+            }
+
             WaitAndClear();
         }
 

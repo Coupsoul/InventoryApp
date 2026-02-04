@@ -17,18 +17,25 @@ namespace InventoryApp.Services
 
         public async Task<Player?> GetPlayerAsync(string name)
         {
+            FastFailArgument(name, "Имя не может быть пустым.");
+
             return await _context.Players.FirstOrDefaultAsync(p => p.Name == name);
         }
 
 
         public async Task<bool> CheckExistPlayerAsync(string name)
         {
+            FastFailArgument(name, "Имя не может быть пустым.");
+
             return await _context.Players.AnyAsync(p => p.Name == name);
         }
 
 
         public async Task<Player?> SignInAsync(string name, string password)
         {
+            FastFailArgument(name, "Имя не может быть пустым.");
+            FastFailArgument(password, "Пароль не может быть пустым.");
+
             var player = await GetPlayerAsync(name);
             if (player == null) return null;
 
@@ -39,6 +46,11 @@ namespace InventoryApp.Services
 
         public async Task<Player> RegisterAsync(string name, string password)
         {
+            FastFailArgument(name, "Имя не может быть пустым.");
+            FastFailArgument(password, "Пароль не может быть пустым.");
+            if (await CheckExistPlayerAsync(name))
+                throw new InvalidOperationException($"Игрок с именем {name} уже существует.");
+
             var player = new Player
             {
                 Name = name,
@@ -53,18 +65,33 @@ namespace InventoryApp.Services
         }
 
 
-        public async Task<bool> GrantAdminRightsAsync(string newAdminName, string playerName, string password)
+        public async Task GrantAdminRightsAsync(string newAdminName, string playerName, string password)
         {
-            var player = await GetPlayerAsync(playerName); if (player == null) return false;
-            var newAdmin = await GetPlayerAsync(newAdminName); if (newAdmin == null) return false;
+            FastFailArgument(newAdminName, "Имя нового админа не указано.");
+            FastFailArgument(playerName, "Имя не может быть пустым.");
+            FastFailArgument(password, "Пароль не может быть пустым.");
+
+            var player = await GetPlayerAsync(playerName) 
+                ?? throw new InvalidOperationException("Текущий игрок не найден.");
+            var newAdmin = await GetPlayerAsync(newAdminName)
+                ?? throw new InvalidOperationException($"Игрок {newAdminName} не найден.");
 
             if (!BCrypt.Net.BCrypt.Verify(password, player.PasswordHash))
-                return false;
+                throw new ArgumentException("Неверный пароль.");
+
+            if (!player.IsAdmin)
+                throw new InvalidOperationException("У вас нет прав назначать администраторов.");
 
             newAdmin.IsAdmin = true;
 
             await _context.SaveChangesAsync();
-            return true;
+        }
+
+
+        private void FastFailArgument(string arg, string message)
+        {
+            if (string.IsNullOrWhiteSpace(arg))
+                throw new ArgumentException(message, nameof(arg));
         }
     }
 }
