@@ -202,6 +202,8 @@ namespace InventoryApp.Services
             var player = await _context.Players.FirstOrDefaultAsync(p => p.Name == playerName)
                 ?? throw new InvalidOperationException($"Игрок \"{playerName}\" не найден.");
 
+            if (!player.IsAdmin) throw new UnauthorizedAccessException("Ошибка доступа: Вы не обладаете необходимыми привилегиями.");
+
             player.Gold = gold;
             player.Gems = gems;
 
@@ -218,7 +220,7 @@ namespace InventoryApp.Services
             var admin = await _context.Players.FirstOrDefaultAsync(p => p.Name == adminName)
                 ?? throw new InvalidOperationException("Администратор не найден.");
 
-            if (!admin.IsAdmin) throw new InvalidOperationException("Ошибка доступа: У вас нет прав учредителя.");
+            if (!admin.IsAdmin) throw new UnauthorizedAccessException("Ошибка доступа: У вас нет привилегий учредителя.");
 
             bool itemExists = await _context.Items.AnyAsync(i => i.Name == itemName);
             if (itemExists) throw new ArgumentException($"Предмет с именем \"{itemName}\" уже существует.");
