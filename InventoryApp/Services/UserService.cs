@@ -76,11 +76,11 @@ namespace InventoryApp.Services
             var newAdmin = await GetPlayerAsync(newAdminName)
                 ?? throw new InvalidOperationException($"Игрок {newAdminName} не найден.");
 
+            if (!player.IsAdmin)
+                throw new UnauthorizedAccessException("Ошибка доступа: У вас нет привилегий посвящения.");
+
             if (!BCrypt.Net.BCrypt.Verify(password, player.PasswordHash))
                 throw new ArgumentException("Неверный пароль.");
-
-            if (!player.IsAdmin)
-                throw new InvalidOperationException("У вас нет прав назначать администраторов.");
 
             newAdmin.IsAdmin = true;
 
